@@ -89,6 +89,7 @@ curl -XPOST localhost:8080/api/v1/tasks \
 | `GET /api/v1/dlq` | browse the dead-letter queue |
 | `POST /api/v1/dlq/{id}/retry` | re-enqueue a dead-lettered task |
 | `GET /api/v1/events` | live stats stream (Server-Sent Events) |
+| `GET /metrics` | Prometheus metrics (backlog, DLQ depth, per-worker throughput) |
 | `GET /healthz`, `GET /readyz` | liveness / readiness probes |
 
 ## Built-in demo task types

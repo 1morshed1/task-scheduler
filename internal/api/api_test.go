@@ -120,3 +120,31 @@ func TestListReturnsEmptyArrayNotNull(t *testing.T) {
 		t.Fatalf("empty list body = %q, want []", string(body))
 	}
 }
+
+func TestMetricsEndpoint(t *testing.T) {
+	ts := newTestServer(t)
+	// Create a task so at least one gauge is non-zero.
+	http.Post(ts.URL+"/api/v1/tasks", "application/json",
+		strings.NewReader(`{"type":"noop"}`))
+
+	res, err := http.Get(ts.URL + "/metrics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	body, _ := io.ReadAll(res.Body)
+	// Spot-check the Prometheus exposition format: HELP/TYPE headers and a
+	// labeled sample must be present.
+	for _, want := range []string{
+		"# TYPE tasks_total gauge",
+		`tasks_total{status="pending"}`,
+		"dlq_depth",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("metrics output missing %q", want)
+		}
+	}
+}

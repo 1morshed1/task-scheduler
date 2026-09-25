@@ -38,6 +38,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/dlq", s.handleListDLQ)
 	mux.HandleFunc("POST /api/v1/dlq/{id}/retry", s.handleRetryDLQ)
 
+	// Prometheus scrape endpoint (see metrics.go).
+	mux.HandleFunc("GET /metrics", s.handleMetrics)
+
 	// Liveness/readiness probes for Kubernetes. healthz = "process is up";
 	// readyz = "process can serve, i.e. the DB is reachable".
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
