@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Task Scheduler — Live Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117; --panel: #1a1d27; --border: #2a2e3a; --text: #e6e8ee;
+    --muted: #8b90a0; --accent: #5b8cff;
+    --pending: #b0b6c8; --running: #5b8cff; --completed: #35c26b;
+    --failed: #e0a34a; --dead: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  header { padding: 20px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  #conn { font-size: 12px; color: var(--muted); margin-left: auto; }
+  #conn.up::before { content: "● "; color: var(--completed); }
+  #conn.down::before { content: "● "; color: var(--dead); }
+  main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 28px 0 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+    gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; }
+  .card .n { font-size: 30px; font-weight: 700; }
+  .card .l { font-size: 12px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .05em; margin-top: 4px; }
+  .card.pending .n { color: var(--pending); }
+  .card.running .n { color: var(--running); }
+  .card.completed .n { color: var(--completed); }
+  .card.failed .n { color: var(--failed); }
+  .card.dead .n { color: var(--dead); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase;
+    font-size: 11px; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; }
+  .pill.active { background: rgba(53,194,107,.15); color: var(--completed); }
+  .pill.draining { background: rgba(224,163,74,.15); color: var(--failed); }
+  .pill.dead { background: rgba(229,72,77,.15); color: var(--dead); }
+  .muted { color: var(--muted); }
+  button { background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 12px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  button:hover { filter: brightness(1.1); }
+  .empty { color: var(--muted); font-size: 13px; padding: 14px; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 30px; }
+  code { background: #000; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚙️ Task Scheduler</h1>
+  <span id="conn" class="down">connecting…</span>
+</header>
+<main>
+  <h2>Tasks by status</h2>
+  <div class="cards" id="statusCards"></div>
+
+  <h2>Workers <span class="muted" id="workerCount"></span></h2>
+  <table>
+    <thead><tr><th>Host</th><th>Status</th><th>Completed</th><th>Failed</th>
+      <th>Last heartbeat</th></tr></thead>
+    <tbody id="workers"><tr><td colspan="5" class="empty">no workers yet</td></tr></tbody>
+  </table>
+
+  <h2>Dead-letter queue <span class="muted" id="dlqCount"></span></h2>
+  <table>
+    <thead><tr><th>Task type</th><th>Final error</th><th>Retries</th>
+      <th>Exhausted</th><th></th></tr></thead>
+    <tbody id="dlq"><tr><td colspan="5" class="empty">empty — nothing has permanently failed</td></tr></tbody>
+  </table>
+</main>
+<footer>
+  Live via Server-Sent Events. Submit a task:
+  <code>curl -XPOST localhost:8080/api/v1/tasks -d '{"type":"flaky"}'</code>
+</footer>
+
+<script>
+// The five statuses we always show a card for (even at zero), in lifecycle order.
+const STATUSES = ["pending", "running", "completed", "failed", "dead"];
+const conn = document.getElementById("conn");
+
+// --- Live stats via Server-Sent Events -------------------------------------
+// EventSource is the browser's built-in SSE client. It connects to our
+// /api/v1/events stream and fires 'message' for each "data: ..." frame the
+// server sends. It also auto-reconnects if the connection drops — no code
+// needed from us. That "free reconnect" is a big reason we chose SSE (docs/09).
+function connect() {
+  const es = new EventSource("/api/v1/events");
+  es.onopen = () => { conn.textContent = "live"; conn.className = "up"; };
+  es.onerror = () => { conn.textContent = "reconnecting…"; conn.className = "down"; };
+  es.onmessage = (e) => render(JSON.parse(e.data));
+}
+
+function render(snap) {
+  renderStatusCards(snap.task_counts || {});
+  renderWorkers(snap.workers || []);
+  // DLQ depth comes in the snapshot; the full list is fetched separately so we
+  // can show the retry button with real ids.
+  document.getElementById("dlqCount").textContent =
+    snap.dlq_depth ? `(${snap.dlq_depth})` : "";
+  refreshDLQ();
+}
+
+function renderStatusCards(counts) {
+  const el = document.getElementById("statusCards");
+  el.innerHTML = STATUSES.map(s => `
+    <div class="card ${s}">
+      <div class="n">${counts[s] || 0}</div>
+      <div class="l">${s}</div>
+    </div>`).join("");
+}
+
+function renderWorkers(workers) {
+  document.getElementById("workerCount").textContent =
+    workers.length ? `(${workers.length})` : "";
+  const el = document.getElementById("workers");
+  if (!workers.length) {
+    el.innerHTML = '<tr><td colspan="5" class="empty">no workers yet — start one with <code>make run-worker</code></td></tr>';
+    return;
+  }
+  el.innerHTML = workers.map(w => `
+    <tr>
+      <td>${escape(w.hostname)}</td>
+      <td><span class="pill ${w.status}">${w.status}</span></td>
+      <td>${w.tasks_completed}</td>
+      <td>${w.tasks_failed}</td>
+      <td class="muted">${ago(w.last_heartbeat)}</td>
+    </tr>`).join("");
+}
+
+// The DLQ list isn't in the SSE snapshot (it can be large); fetch it on demand.
+async function refreshDLQ() {
+  try {
+    const res = await fetch("/api/v1/dlq?limit=50");
+    const items = await res.json();
+    const el = document.getElementById("dlq");
+    if (!items.length) {
+      el.innerHTML = '<tr><td colspan="5" class="empty">empty — nothing has permanently failed</td></tr>';
+      return;
+    }
+    el.innerHTML = items.map(d => `
+      <tr>
+        <td>${escape(d.task_type)}</td>
+        <td class="muted">${escape(d.final_error || "")}</td>
+        <td>${d.retry_count}</td>
+        <td class="muted">${ago(d.exhausted_at)}</td>
+        <td><button onclick="retryDLQ('${d.id}')">Retry</button></td>
+      </tr>`).join("");
+  } catch (e) { /* transient; next tick retries */ }
+}
+
+// The one browser→server action. It's an ordinary POST, not part of the SSE
+// stream — SSE is receive-only, so actions use plain fetch (docs/09).
+async function retryDLQ(id) {
+  await fetch(`/api/v1/dlq/${id}/retry`, { method: "POST" });
+  refreshDLQ();
+}
+
+function ago(ts) {
+  const s = Math.max(0, Math.round((Date.now() - new Date(ts)) / 1000));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.round(s / 60) + "m ago";
+  return Math.round(s / 3600) + "h ago";
+}
+function escape(str) {
+  return String(str).replace(/[&<>"]/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+connect();
+</script>
+</body>
+</html>
