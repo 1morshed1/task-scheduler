@@ -22,6 +22,9 @@ import (
 // (JSON shape, status codes, SQL) actually live. Skips if no DB is reachable.
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping DB-backed test in -short mode")
+	}
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://scheduler:scheduler@localhost:5432/taskscheduler?sslmode=disable"

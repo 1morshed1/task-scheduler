@@ -1,0 +1,46 @@
+# The control plane: API + dashboard + reaper. Stateless, so we can run several
+# replicas behind a Service. The reaper runs in every replica; that's fine —
+# its operations are idempotent (re-queuing an already-requeued task is a no-op),
+# so redundant reapers don't conflict.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: scheduler-server }
+  template:
+    metadata:
+      labels: { app: scheduler-server }
+    spec:
+      containers:
+        - name: server
+          image: task-scheduler:latest      # build & push your image; set the tag
+          imagePullPolicy: IfNotPresent
+          args: ["/app/server"]
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef: { name: scheduler-db }
+          # Liveness = "is the process up"; readiness = "can it reach the DB".
+          # Kubernetes only sends traffic to a pod once readiness passes, and
+          # restarts a pod whose liveness fails.
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-server
+spec:
+  selector: { app: scheduler-server }
+  ports:
+    - port: 8080
+      targetPort: 8080

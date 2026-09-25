@@ -16,6 +16,9 @@ import (
 // caller's test is skipped rather than failed.
 func testStore(t *testing.T) *Store {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping DB-backed test in -short mode")
+	}
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://scheduler:scheduler@localhost:5432/taskscheduler?sslmode=disable"

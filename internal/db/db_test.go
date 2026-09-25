@@ -19,6 +19,9 @@ func testDSN() string {
 }
 
 func TestMigrateIsIdempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping DB-backed test in -short mode")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 

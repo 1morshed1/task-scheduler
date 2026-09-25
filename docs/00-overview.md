@@ -106,4 +106,5 @@ curl -X POST localhost:8080/api/v1/tasks \
 7. `07-heartbeats-and-reaper.md` — detecting and recovering from crashes
 8. `08-graceful-shutdown.md` — surviving deploys without dropping work
 9. `09-dashboard-sse-vs-websocket.md` — live UI with the simplest tool
-10. `DECISIONS.md` — a running log of every notable decision and its trade-off
+10. `10-deployment.md` — Docker & Kubernetes, and how deploys stay clean
+11. `DECISIONS.md` — a running log of every notable decision and its trade-off

@@ -42,10 +42,10 @@ func (s *Store) CreateTask(ctx context.Context, p CreateTaskParams) (*models.Tas
 //
 // How the SQL works, from the inside out:
 //
-//	  SELECT id ... WHERE status='pending' AND scheduled_at<=now()
-//	  ORDER BY priority DESC, scheduled_at ASC
-//	  FOR UPDATE SKIP LOCKED
-//	  LIMIT 1
+//	SELECT id ... WHERE status='pending' AND scheduled_at<=now()
+//	ORDER BY priority DESC, scheduled_at ASC
+//	FOR UPDATE SKIP LOCKED
+//	LIMIT 1
 //
 // FOR UPDATE takes a row lock on the chosen row for the duration of the
 // statement. SKIP LOCKED is the magic word: if another worker's transaction

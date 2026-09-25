@@ -1,0 +1,35 @@
+# The worker pool. Scale this Deployment up and down freely — workers coordinate
+# only through Postgres row locks (docs/04), so adding replicas just adds
+# throughput with no configuration.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: scheduler-worker }
+  template:
+    metadata:
+      labels: { app: scheduler-worker }
+    spec:
+      # THE KEY SETTING for graceful shutdown (docs/08): give the worker time to
+      # finish its in-flight task after SIGTERM before Kubernetes escalates to
+      # SIGKILL. This must be >= the worker's SHUTDOWN_GRACE, or k8s will kill it
+      # mid-drain. We set worker grace to 30s and this to 40s for headroom.
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: worker
+          image: task-scheduler:latest      # build & push your image; set the tag
+          imagePullPolicy: IfNotPresent
+          args: ["/app/worker"]
+          envFrom:
+            - secretRef: { name: scheduler-db }
+          env:
+            - { name: WORKER_CONCURRENCY, value: "5" }
+            - { name: HEARTBEAT_INTERVAL, value: "10s" }
+            - { name: LOCK_TTL, value: "30s" }
+            - { name: SHUTDOWN_GRACE, value: "30s" }
+          resources:
+            requests: { cpu: "100m", memory: "64Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
