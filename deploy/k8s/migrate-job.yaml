@@ -1,0 +1,20 @@
+# A one-shot Job that applies the schema, then exits. Run this as part of your
+# deploy pipeline BEFORE rolling out workers, so the schema has a single clear
+# owner and workers can assume the tables exist. Uses the same image as
+# everything else, just with the -migrate-only flag.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: scheduler-migrate
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: task-scheduler:latest     # build & push your image; set the tag
+          imagePullPolicy: IfNotPresent
+          args: ["-migrate-only"]
+          envFrom:
+            - secretRef: { name: scheduler-db }

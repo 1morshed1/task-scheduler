@@ -1,0 +1,20 @@
+# Compiled binaries produced by `make build`
+/bin/
+task-scheduler
+server
+worker
+
+# Go workspace / test artifacts
+*.test
+*.out
+coverage.*
+
+# Local environment overrides (never commit real secrets)
+.env
+.env.local
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
