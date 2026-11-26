@@ -1,5 +1,8 @@
 # Distributed Task Scheduler with Dead-Letter Recovery
 
+[![CI](https://github.com/1morshed1/task-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/1morshed1/task-scheduler/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A from-scratch distributed cron/task scheduler in Go — a simplified cousin of
 Celery, Sidekiq, or Temporal. It accepts tasks over an HTTP API, spreads them
 across a pool of workers with an **exactly-once claim**, retries failures with
@@ -154,3 +157,7 @@ lightweight ADR — Postgres-as-queue, the single-statement claim, no framework,
 the reaper's retry accounting, SSE over WebSockets — with the alternatives and
 the trade-off accepted. That file is arguably the most useful thing here for
 your own future systems.
+
+## License
+
+[MIT](LICENSE)

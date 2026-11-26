@@ -35,7 +35,7 @@ See `docs/04-locking-skip-locked.md`.
 
 ## ADR-002 — Claim a task in ONE atomic UPDATE, not BEGIN/SELECT/UPDATE/COMMIT
 
-**Context.** The plan sketches the claim as an explicit transaction: `BEGIN;
+**Context.** The spec sketches the claim as an explicit transaction: `BEGIN;
 SELECT ... FOR UPDATE SKIP LOCKED; UPDATE ...; COMMIT;`. That works, but it
 holds a transaction open across two round-trips.
 
@@ -85,7 +85,7 @@ See `docs/07-heartbeats-and-reaper.md`.
 
 ## ADR-005 — Server-Sent Events (SSE) for the dashboard, not WebSockets
 
-**Context.** The plan says "Dashboard (Go + WebSocket)". The dashboard only ever
+**Context.** The spec says "Dashboard (Go + WebSocket)". The dashboard only ever
 pushes data *from* server *to* browser (counts, worker health). The browser
 never streams data back over the same channel.
 

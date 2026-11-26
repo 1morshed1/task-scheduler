@@ -1,6 +1,6 @@
 # 09 · The Dashboard — Why Server-Sent Events, not WebSockets
 
-The plan says "Dashboard (Go + WebSocket)". We built it with **Server-Sent
+The spec says "Dashboard (Go + WebSocket)". We built it with **Server-Sent
 Events (SSE)** instead. This doc explains that choice, because *choosing the
 simplest tool that fits* is a skill worth as much as knowing the fancy one.
 Code: `internal/dashboard/`.

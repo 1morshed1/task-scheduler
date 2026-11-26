@@ -57,7 +57,7 @@ Postgres table into a high-quality work queue.
 
 ## Our exact statement (and why it's one UPDATE)
 
-The plan sketches this as `BEGIN; SELECT ... FOR UPDATE SKIP LOCKED; UPDATE ...;
+The spec sketches this as `BEGIN; SELECT ... FOR UPDATE SKIP LOCKED; UPDATE ...;
 COMMIT;`. We collapse it into a single atomic statement (see `store/tasks.go`,
 `ClaimTask`, and ADR-002):
 

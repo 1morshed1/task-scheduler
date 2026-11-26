@@ -60,7 +60,7 @@ just run them in two terminals; in Kubernetes they are two Deployments.
 
 ## Why is coordination-free (no leader election) possible?
 
-The plan mentions leader election as a "hard problem", and it is — *if* you
+The spec mentions leader election as a "hard problem", and it is — *if* you
 build a scheduler where one node must own the schedule. We sidestep it: because
 claiming is an atomic database operation with `SKIP LOCKED`, **every worker is
 equal**. There is no leader to elect. The database is the arbiter. This is a
